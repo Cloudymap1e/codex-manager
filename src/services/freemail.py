@@ -216,6 +216,13 @@ class FreemailService(BaseEmailService):
                         continue
 
                     seen_mail_ids.add(mail_id)
+                    message_marker = f"id:{mail_id}"
+
+                    if self._is_message_before_otp(
+                        mail.get("created_at") or mail.get("createdAt") or mail.get("received_at") or mail.get("receivedAt"),
+                        otp_sent_at,
+                    ):
+                        continue
 
                     sender = str(mail.get("sender", "")).lower()
                     subject = str(mail.get("subject", ""))
@@ -229,6 +236,8 @@ class FreemailService(BaseEmailService):
                     # 尝试直接使用 Freemail 提取的验证码
                     v_code = mail.get("verification_code")
                     if v_code:
+                        if not self._accept_verification_code(email, str(v_code), message_marker):
+                            continue
                         logger.info(f"从 Freemail 邮箱 {email} 找到验证码: {v_code}")
                         self.update_status(True)
                         return v_code
@@ -237,6 +246,8 @@ class FreemailService(BaseEmailService):
                     match = re.search(pattern, content)
                     if match:
                         code = match.group(1)
+                        if not self._accept_verification_code(email, code, message_marker):
+                            continue
                         logger.info(f"从 Freemail 邮箱 {email} 找到验证码: {code}")
                         self.update_status(True)
                         return code
@@ -248,6 +259,8 @@ class FreemailService(BaseEmailService):
                         match = re.search(pattern, full_content)
                         if match:
                             code = match.group(1)
+                            if not self._accept_verification_code(email, code, message_marker):
+                                continue
                             logger.info(f"从 Freemail 邮箱 {email} 找到验证码: {code}")
                             self.update_status(True)
                             return code

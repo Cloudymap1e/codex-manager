@@ -330,6 +330,13 @@ class TempMailService(BaseEmailService):
                         continue
 
                     seen_mail_ids.add(mail_id)
+                    message_marker = f"id:{mail_id}"
+
+                    if self._is_message_before_otp(
+                        mail.get("createdAt") or mail.get("created_at") or mail.get("receivedAt") or mail.get("received_at"),
+                        otp_sent_at,
+                    ):
+                        continue
 
                     parsed = self._extract_mail_fields(mail)
                     sender = parsed["sender"].lower()
@@ -345,6 +352,8 @@ class TempMailService(BaseEmailService):
                     match = re.search(pattern, content)
                     if match:
                         code = match.group(1)
+                        if not self._accept_verification_code(email, code, message_marker):
+                            continue
                         logger.info(f"从 TempMail 邮箱 {email} 找到验证码: {code}")
                         self.update_status(True)
                         return code

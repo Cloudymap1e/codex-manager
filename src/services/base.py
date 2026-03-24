@@ -5,6 +5,7 @@
 
 import abc
 import logging
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from enum import Enum
 
@@ -45,6 +46,8 @@ class BaseEmailService(abc.ABC):
         self.name = name or f"{service_type.value}_service"
         self._status = EmailServiceStatus.HEALTHY
         self._last_error = None
+        self._used_verification_codes: Dict[str, set] = {}
+        self._seen_verification_messages: Dict[str, set] = {}
 
     @property
     def status(self) -> EmailServiceStatus:
@@ -162,6 +165,100 @@ class BaseEmailService(abc.ABC):
             if email_info.get("id") == email_id:
                 return email_info
         return None
+
+    def _get_used_verification_codes(self, email: str) -> set:
+        """获取邮箱对应的已使用验证码集合。"""
+        key = str(email or "").strip().lower()
+        if key not in self._used_verification_codes:
+            self._used_verification_codes[key] = set()
+        return self._used_verification_codes[key]
+
+    def _get_seen_verification_messages(self, email: str) -> set:
+        """获取邮箱对应的已处理消息标识集合。"""
+        key = str(email or "").strip().lower()
+        if key not in self._seen_verification_messages:
+            self._seen_verification_messages[key] = set()
+        return self._seen_verification_messages[key]
+
+    def _remember_verification_code(self, email: str, code: str) -> bool:
+        """记录验证码；若已用过则返回 False。"""
+        used_codes = self._get_used_verification_codes(email)
+        if code in used_codes:
+            return False
+        used_codes.add(code)
+        return True
+
+    def _remember_verification_message(self, email: str, message_marker: Optional[str]) -> bool:
+        """记录消息标识；若已处理过则返回 False。"""
+        if not message_marker:
+            return True
+
+        seen_messages = self._get_seen_verification_messages(email)
+        if message_marker in seen_messages:
+            return False
+        seen_messages.add(message_marker)
+        return True
+
+    def _accept_verification_code(
+        self,
+        email: str,
+        code: str,
+        message_marker: Optional[str] = None,
+    ) -> bool:
+        """
+        决定是否接受验证码。
+
+        若有可靠的新邮件标识，优先按消息去重，这样新邮件即便验证码重复也能被接受；
+        否则退回到按验证码去重，避免旧码被重复消费。
+        """
+        if message_marker:
+            if not self._remember_verification_message(email, message_marker):
+                return False
+            self._get_used_verification_codes(email).add(code)
+            return True
+
+        return self._remember_verification_code(email, code)
+
+    def _parse_message_timestamp(self, value: Any) -> Optional[float]:
+        """将常见邮件时间字段解析为 Unix 时间戳。"""
+        if value is None or value == "":
+            return None
+
+        if isinstance(value, datetime):
+            return value.timestamp()
+
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        text = str(value).strip()
+        if not text:
+            return None
+
+        try:
+            return float(text)
+        except ValueError:
+            pass
+
+        normalized = text.replace("Z", "+00:00") if text.endswith("Z") else text
+        try:
+            return datetime.fromisoformat(normalized).timestamp()
+        except ValueError:
+            return None
+
+    def _is_message_before_otp(self, message_time: Any, otp_sent_at: Optional[float], tolerance_seconds: int = 1) -> bool:
+        """
+        判断邮件是否早于当前 OTP 发送窗口。
+
+        允许少量时钟误差，避免接口时间与本地时间有轻微偏移时误伤新邮件。
+        """
+        if not otp_sent_at:
+            return False
+
+        message_ts = self._parse_message_timestamp(message_time)
+        if message_ts is None:
+            return False
+
+        return message_ts + tolerance_seconds < otp_sent_at
 
     def wait_for_email(
         self,

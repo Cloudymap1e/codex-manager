@@ -310,6 +310,13 @@ class MeoMailEmailService(BaseEmailService):
                         continue
 
                     seen_message_ids.add(message_id)
+                    message_marker = f"id:{message_id}"
+
+                    if self._is_message_before_otp(
+                        message.get("created_at") or message.get("createdAt") or message.get("received_at") or message.get("receivedAt"),
+                        otp_sent_at,
+                    ):
+                        continue
 
                     # 检查是否是目标邮件
                     sender = str(message.get("from_address", "")).lower()
@@ -331,6 +338,8 @@ class MeoMailEmailService(BaseEmailService):
                     match = re.search(pattern, re.sub(email_pattern, "", content))
                     if match:
                         code = match.group(1)
+                        if not self._accept_verification_code(email, code, message_marker):
+                            continue
                         logger.info(f"从自定义域名邮箱 {email} 找到验证码: {code}")
                         self.update_status(True)
                         return code
