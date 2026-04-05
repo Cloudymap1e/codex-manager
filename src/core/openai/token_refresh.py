@@ -354,8 +354,32 @@ def validate_account_token(account_id: int, proxy_url: Optional[str] = None) -> 
         if not account:
             return False, "账号不存在"
 
-        if not account.access_token:
-            return False, "账号没有 access_token"
-
         manager = TokenRefreshManager(proxy_url=proxy_url)
-        return manager.validate_token(account.access_token)
+        has_refresh_path = bool(account.session_token or account.refresh_token)
+
+        if account.access_token:
+            is_valid, error = manager.validate_token(account.access_token)
+            if is_valid:
+                return True, None
+            if not has_refresh_path:
+                return False, error
+
+        if not has_refresh_path:
+            return False, "账号没有可验证的 access_token，且缺少 session_token / refresh_token"
+
+        refresh_result = manager.refresh_account(account)
+        if not refresh_result.success or not refresh_result.access_token:
+            return False, refresh_result.error_message or "验证前刷新失败"
+
+        update_data = {
+            "access_token": refresh_result.access_token,
+            "last_refresh": datetime.utcnow(),
+        }
+        if refresh_result.refresh_token:
+            update_data["refresh_token"] = refresh_result.refresh_token
+        if refresh_result.expires_at:
+            update_data["expires_at"] = refresh_result.expires_at
+
+        crud.update_account(db, account_id, **update_data)
+
+        return manager.validate_token(refresh_result.access_token)

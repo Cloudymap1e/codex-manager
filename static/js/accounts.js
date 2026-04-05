@@ -485,6 +485,7 @@ function renderAccounts(accounts) {
                         <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();toggleMoreMenu(this)">更多</button>
                         <div class="dropdown-menu" style="min-width:100px;">
                             <a href="#" class="dropdown-item" onclick="event.preventDefault();closeMoreMenu(this);refreshToken(${account.id})">刷新</a>
+                            <a href="#" class="dropdown-item" onclick="event.preventDefault();closeMoreMenu(this);validateSingleAccount(${account.id})">验证</a>
                             <a href="#" class="dropdown-item" onclick="event.preventDefault();closeMoreMenu(this);uploadAccount(${account.id})">上传</a>
                             <a href="#" class="dropdown-item" onclick="event.preventDefault();closeMoreMenu(this);markSubscription(${account.id})">标记</a>
                             <a href="#" class="dropdown-item" onclick="event.preventDefault();closeMoreMenu(this);checkInboxCode(${account.id})">收件箱</a>
@@ -721,6 +722,21 @@ async function handleBatchValidate() {
     }
 }
 
+async function validateSingleAccount(id) {
+    try {
+        toast.info('正在验证账号...');
+        const result = await api.post(`/accounts/${id}/validate`, {}, { timeoutMs: 120000 });
+        if (result.valid) {
+            toast.success('账号有效');
+            loadAccounts();
+        } else {
+            toast.error('账号无效: ' + (result.error || '未知错误'));
+        }
+    } catch (error) {
+        toast.error('验证失败: ' + error.message);
+    }
+}
+
 // 查看账号详情
 async function viewAccount(id) {
     try {
@@ -814,6 +830,9 @@ async function viewAccount(id) {
             <div style="margin-top: var(--spacing-lg); display: flex; gap: var(--spacing-sm);">
                 <button class="btn btn-primary" onclick="refreshToken(${id}); elements.detailModal.classList.remove('active');">
                     🔄 刷新Token
+                </button>
+                <button class="btn btn-info" onclick="validateSingleAccount(${id})">
+                    ✅ 验证账号
                 </button>
             </div>
         `;
