@@ -110,6 +110,7 @@
                             <option value="tempmail">Tempmail</option>
                             <option value="outlook">Outlook</option>
                             <option value="moe_mail">MoeMail</option>
+                            <option value="manual">手动导入</option>
                             <option value="cloud_mail">Cloud Mail</option>
                         </select>
 
@@ -117,6 +118,9 @@
                     </div>
 
                     <div class="toolbar-right">
+                        <button class="btn btn-primary" id="add-account-btn" title="手动添加账号">
+                            ➕ 添加账号
+                        </button>
                         <button class="btn btn-ghost" id="refresh-btn" title="刷新">
                             🔄 刷新
                         </button>
@@ -226,6 +230,79 @@
             </div>
             <div class="modal-body" id="modal-body">
                 <!-- 动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="add-account-modal">
+        <div class="modal-content" style="max-width: 720px;">
+            <div class="modal-header">
+                <h3>手动添加账号</h3>
+                <button class="modal-close" id="close-add-account-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="manual-account-email">邮箱</label>
+                        <input class="form-input" id="manual-account-email" type="email" placeholder="name@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-account-password">密码</label>
+                        <input class="form-input" id="manual-account-password" type="text" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-account-status">状态</label>
+                        <select class="form-select" id="manual-account-status">
+                            <option value="active">活跃</option>
+                            <option value="expired">过期</option>
+                            <option value="banned">封禁</option>
+                            <option value="failed">失败</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-account-client-id">Client ID</label>
+                        <input class="form-input" id="manual-account-client-id" type="text" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-account-account-id">Account ID</label>
+                        <input class="form-input" id="manual-account-account-id" type="text" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-account-workspace-id">Workspace ID</label>
+                        <input class="form-input" id="manual-account-workspace-id" type="text" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-account-proxy-used">Proxy Used</label>
+                        <input class="form-input" id="manual-account-proxy-used" type="text" placeholder="可选">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="manual-account-access-token">Access Token</label>
+                        <textarea class="form-input" id="manual-account-access-token" rows="3" placeholder="可选"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="manual-account-refresh-token">Refresh Token</label>
+                        <textarea class="form-input" id="manual-account-refresh-token" rows="3" placeholder="可选"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="manual-account-id-token">ID Token</label>
+                        <textarea class="form-input" id="manual-account-id-token" rows="3" placeholder="可选"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="manual-account-session-token">Session Token</label>
+                        <textarea class="form-input" id="manual-account-session-token" rows="3" placeholder="可选"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="manual-account-cookies">Cookies</label>
+                        <textarea class="form-input" id="manual-account-cookies" rows="3" placeholder="可选"></textarea>
+                    </div>
+                </div>
+                <p style="margin-top:12px;color:var(--text-muted);font-size:0.9rem;">
+                    至少填写密码、任意一种 Token 或 Cookies 之一。手动添加的账号会标记为 <code>manual</code> 来源。
+                </p>
+            </div>
+            <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-secondary" id="cancel-add-account-btn">取消</button>
+                <button class="btn btn-primary" id="submit-add-account-btn">保存账号</button>
             </div>
         </div>
     </div>

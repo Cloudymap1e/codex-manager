@@ -24,6 +24,7 @@ const elements = {
     filterStatus: document.getElementById('filter-status'),
     filterService: document.getElementById('filter-service'),
     searchInput: document.getElementById('search-input'),
+    addAccountBtn: document.getElementById('add-account-btn'),
     refreshBtn: document.getElementById('refresh-btn'),
     batchRefreshBtn: document.getElementById('batch-refresh-btn'),
     batchValidateBtn: document.getElementById('batch-validate-btn'),
@@ -40,7 +41,11 @@ const elements = {
     pageInfo: document.getElementById('page-info'),
     detailModal: document.getElementById('detail-modal'),
     modalBody: document.getElementById('modal-body'),
-    closeModal: document.getElementById('close-modal')
+    closeModal: document.getElementById('close-modal'),
+    addAccountModal: document.getElementById('add-account-modal'),
+    closeAddAccountModal: document.getElementById('close-add-account-modal'),
+    cancelAddAccountBtn: document.getElementById('cancel-add-account-btn'),
+    submitAddAccountBtn: document.getElementById('submit-add-account-btn')
 };
 
 // 初始化
@@ -54,6 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 事件监听
 function initEventListeners() {
+    if (elements.addAccountBtn) {
+        elements.addAccountBtn.addEventListener('click', openAddAccountModal);
+    }
+
     // 筛选
     elements.filterStatus.addEventListener('change', () => {
         currentPage = 1;
@@ -206,12 +215,116 @@ function initEventListeners() {
         }
     });
 
+    if (elements.closeAddAccountModal) {
+        elements.closeAddAccountModal.addEventListener('click', closeAddAccountModal);
+    }
+    if (elements.cancelAddAccountBtn) {
+        elements.cancelAddAccountBtn.addEventListener('click', closeAddAccountModal);
+    }
+    if (elements.submitAddAccountBtn) {
+        elements.submitAddAccountBtn.addEventListener('click', submitManualAccount);
+    }
+    if (elements.addAccountModal) {
+        elements.addAccountModal.addEventListener('click', (e) => {
+            if (e.target === elements.addAccountModal) {
+                closeAddAccountModal();
+            }
+        });
+    }
+
     // 点击其他地方关闭下拉菜单
     document.addEventListener('click', () => {
         elements.exportMenu.classList.remove('active');
         uploadMenu.classList.remove('active');
         document.querySelectorAll('#accounts-table .dropdown-menu.active').forEach(m => m.classList.remove('active'));
     });
+}
+
+function getManualAccountFormValues() {
+    return {
+        email: document.getElementById('manual-account-email')?.value?.trim() || '',
+        password: document.getElementById('manual-account-password')?.value?.trim() || '',
+        status: document.getElementById('manual-account-status')?.value || 'active',
+        client_id: document.getElementById('manual-account-client-id')?.value?.trim() || '',
+        account_id: document.getElementById('manual-account-account-id')?.value?.trim() || '',
+        workspace_id: document.getElementById('manual-account-workspace-id')?.value?.trim() || '',
+        proxy_used: document.getElementById('manual-account-proxy-used')?.value?.trim() || '',
+        access_token: document.getElementById('manual-account-access-token')?.value?.trim() || '',
+        refresh_token: document.getElementById('manual-account-refresh-token')?.value?.trim() || '',
+        id_token: document.getElementById('manual-account-id-token')?.value?.trim() || '',
+        session_token: document.getElementById('manual-account-session-token')?.value?.trim() || '',
+        cookies: document.getElementById('manual-account-cookies')?.value?.trim() || '',
+        email_service: 'manual',
+    };
+}
+
+function resetAddAccountForm() {
+    const defaults = {
+        'manual-account-email': '',
+        'manual-account-password': '',
+        'manual-account-status': 'active',
+        'manual-account-client-id': '',
+        'manual-account-account-id': '',
+        'manual-account-workspace-id': '',
+        'manual-account-proxy-used': '',
+        'manual-account-access-token': '',
+        'manual-account-refresh-token': '',
+        'manual-account-id-token': '',
+        'manual-account-session-token': '',
+        'manual-account-cookies': '',
+    };
+
+    Object.entries(defaults).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = value;
+    });
+}
+
+function openAddAccountModal() {
+    resetAddAccountForm();
+    elements.addAccountModal.classList.add('active');
+}
+
+function closeAddAccountModal() {
+    elements.addAccountModal.classList.remove('active');
+}
+
+async function submitManualAccount() {
+    const payload = getManualAccountFormValues();
+    const hasCredential = Boolean(
+        payload.password ||
+        payload.access_token ||
+        payload.refresh_token ||
+        payload.id_token ||
+        payload.session_token ||
+        payload.cookies
+    );
+
+    if (!payload.email) {
+        toast.warning('请填写邮箱');
+        return;
+    }
+    if (!hasCredential) {
+        toast.warning('至少填写密码、任意一种 Token 或 Cookies 之一');
+        return;
+    }
+
+    elements.submitAddAccountBtn.disabled = true;
+    elements.submitAddAccountBtn.textContent = '保存中...';
+
+    try {
+        await api.post('/accounts', payload);
+        toast.success('账号已添加');
+        closeAddAccountModal();
+        loadStats();
+        loadAccounts();
+    } catch (error) {
+        toast.error('添加失败: ' + error.message);
+    } finally {
+        elements.submitAddAccountBtn.disabled = false;
+        elements.submitAddAccountBtn.textContent = '保存账号';
+    }
 }
 
 // 加载统计信息

@@ -166,6 +166,23 @@ class AccountResponse(BaseModel):
         from_attributes = True
 
 
+class AccountCreateRequest(BaseModel):
+    """手动添加账号请求"""
+    email: str
+    password: Optional[str] = None
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    id_token: Optional[str] = None
+    session_token: Optional[str] = None
+    client_id: Optional[str] = None
+    account_id: Optional[str] = None
+    workspace_id: Optional[str] = None
+    cookies: Optional[str] = None
+    proxy_used: Optional[str] = None
+    status: str = "active"
+    email_service: str = "manual"
+
+
 class AccountListResponse(BaseModel):
     """账号列表响应"""
     total: int
@@ -300,6 +317,59 @@ async def get_account(account_id: int):
         account = crud.get_account_by_id(db, account_id)
         if not account:
             raise HTTPException(status_code=404, detail="账号不存在")
+        return account_to_response(account)
+
+
+@router.post("", response_model=AccountResponse)
+async def create_manual_account(request: AccountCreateRequest):
+    """手动添加账号"""
+    email = (request.email or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="邮箱不能为空")
+
+    token_values = [
+        request.access_token,
+        request.refresh_token,
+        request.id_token,
+        request.session_token,
+    ]
+    has_password = bool((request.password or "").strip())
+    has_token = any(bool((value or "").strip()) for value in token_values)
+    has_cookies = bool((request.cookies or "").strip())
+
+    if not (has_password or has_token or has_cookies):
+        raise HTTPException(
+            status_code=400,
+            detail="至少提供密码、任意一种 Token 或 Cookies 之一",
+        )
+
+    if request.status not in [e.value for e in AccountStatus]:
+        raise HTTPException(status_code=400, detail="无效的状态值")
+
+    email_service = (request.email_service or "").strip() or "manual"
+
+    with get_db() as db:
+        existing = crud.get_account_by_email(db, email)
+        if existing:
+            raise HTTPException(status_code=409, detail=f"账号已存在: {email}")
+
+        account = crud.create_account(
+            db,
+            email=email,
+            password=(request.password or "").strip() or None,
+            email_service=email_service,
+            client_id=(request.client_id or "").strip() or None,
+            session_token=(request.session_token or "").strip() or None,
+            account_id=(request.account_id or "").strip() or None,
+            workspace_id=(request.workspace_id or "").strip() or None,
+            access_token=(request.access_token or "").strip() or None,
+            refresh_token=(request.refresh_token or "").strip() or None,
+            id_token=(request.id_token or "").strip() or None,
+            cookies=(request.cookies or "").strip() or None,
+            proxy_used=(request.proxy_used or "").strip() or None,
+            status=request.status,
+            source="manual",
+        )
         return account_to_response(account)
 
 

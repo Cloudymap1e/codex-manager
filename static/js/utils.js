@@ -369,6 +369,7 @@ const statusMap = {
         tempmail: 'Tempmail.lol',
         outlook: 'Outlook',
         moe_mail: 'MoeMail',
+        manual: '手动导入',
         temp_mail: 'Temp-Mail（自部署）',
         duck_mail: 'DuckMail',
         freemail: 'Freemail',
